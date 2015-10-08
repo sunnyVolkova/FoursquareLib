@@ -13,7 +13,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
 
+import retrofit.Callback;
 import retrofit.RetrofitError;
+import retrofit.client.Response;
 //TODO: create builder ???
 
 /**
@@ -21,7 +23,33 @@ import retrofit.RetrofitError;
  */
 public class LocationChecker {
 	public enum UserState {
-		IN, STAY, EATING, FINISHED_EATING, OUT
+		IN, STAY, EATING, FINISHED_EATING, OUT;
+		private long entered_;
+		private UserState(){
+			entered_ = System.currentTimeMillis();
+		}
+
+		public long getEntered(){
+			return entered_;
+		}
+	}
+
+	public class UserStateDescription{
+		UserState state;
+		long entered;
+		public UserStateDescription(UserState state, long entered){
+			this.state = state;
+			this.entered = entered;
+		}
+
+		public void setState(UserState state){
+			this.state = state;
+			entered = System.currentTimeMillis();
+		}
+
+		public long getEntered(){
+			return entered;
+		}
 	}
 
 	public enum Signal {
@@ -75,7 +103,7 @@ public class LocationChecker {
 	private String searchLimit_ = SEARCH_LIMIT;
 
 	//variables for check process
-	private UserState userState_ = UserState.OUT;
+	private UserStateDescription userState_ = new UserStateDescription(UserState.OUT, System.currentTimeMillis());
 	private double lastKnownLatitude_ = 0.0;
 	private double lastKnownLongitude_ = 0.0;
 	private int waitTime_ = waitForOutMs_;
@@ -135,7 +163,7 @@ public class LocationChecker {
 			double longitude = myLocation.getLongitude();
 			Log.d("LOG", "run latitude = " + latitude + " longitude = " + longitude + " userState_ = " + userState_);
 			//TODO: probably should check distance in UserState.FINISHED_EATING state???
-			if (userState_ != UserState.OUT
+			if (userState_.state != UserState.OUT
 					||
 					Math.abs(LocationUtils.distanceFrom(lastKnownLatitude_, lastKnownLongitude_, latitude, longitude)) > locationCheckThreshold_) {
 				String ll = String.format(Locale.US, "%.06f", latitude) + "," + String.format(Locale.US, "%.06f", longitude);
@@ -159,6 +187,47 @@ public class LocationChecker {
 		return waitTime_;
 	}
 
+	/**
+	 * Main method for checking user state according to location and prev state
+	 *
+	 * @return time delay before next check in ms
+	 */
+	public int checkLocation2(final Context context, Location myLocation) {
+		if (myLocation != null) {
+			double latitude = myLocation.getLatitude();
+			double longitude = myLocation.getLongitude();
+			Log.d("LOG", "run latitude = " + latitude + " longitude = " + longitude + " userState_ = " + userState_ + " userState_.getEntered() = " + userState_.getEntered());
+			//TODO: probably should check distance in UserState.FINISHED_EATING state???
+			if (checkIfTimeoutExpired() &&
+					(userState_.state != UserState.OUT
+					||
+					Math.abs(LocationUtils.distanceFrom(lastKnownLatitude_, lastKnownLongitude_, latitude, longitude)) > locationCheckThreshold_)) {
+				String ll = String.format(Locale.US, "%.06f", latitude) + "," + String.format(Locale.US, "%.06f", longitude);
+				ForsquareProvider.getForsquareService().searchVenues(ll, searchRadius_, searchLimit_, getCategoriesString(), new Callback<SearchVenuesResponse>() {
+					@Override
+					public void success(SearchVenuesResponse searchVenuesResponse, Response response) {
+						if (searchVenuesResponse.getVenues() != null && searchVenuesResponse.getVenues().length > 0 && searchVenuesResponse.getVenues()[0] != null) {
+							Log.d("LOG", "success: " + searchVenuesResponse.getVenues()[0].getId());
+							changeStateIfIn(context, searchVenuesResponse.getVenues()[0].getId());
+						} else {
+							Log.d("LOG", "success: empty venues");
+							changeStateIfOut(context);
+						}
+					}
+
+					@Override
+					public void failure(RetrofitError error) {
+						Log.d("LOG", "failure " + error.getMessage());
+						changeStateIfOut(context);
+					}
+				});
+				lastKnownLatitude_ = latitude;
+				lastKnownLongitude_ = longitude;
+			}
+		}
+		return waitTime_;
+	}
+
 	private String getCategoriesString() {
 		StringBuilder builder = new StringBuilder();
 		for (String s : categoryList_) {
@@ -170,68 +239,86 @@ public class LocationChecker {
 		return builder.toString();
 	}
 
+	private boolean checkIfTimeoutExpired(){
+		long currentTime = System.currentTimeMillis();
+		Log.d("LOG", "userState_.getEntered() = " + userState_.getEntered() + " currentTime = " + currentTime);
+		switch (userState_.state) {
+			case OUT:
+				return true;
+			case IN:
+				return (currentTime - userState_.getEntered()) > waitForStayMs_;
+			case STAY:
+				return (currentTime - userState_.getEntered()) > waitForOrderMs_;
+			case EATING:
+				return (currentTime - userState_.getEntered()) > waitForStopEatingMs_;
+			case FINISHED_EATING:
+				return true;
+		}
+		return true;
+	}
+
 	private void changeStateIfOut(Context context) {
 		currentVenueId_ = "";
-		switch (userState_) {
+		switch (userState_.state) {
 			case OUT:
 				waitTime_ = waitForOutMs_;
 				break;
 			case IN:
-				userState_ = UserState.OUT;
+				userState_.setState(UserState.OUT);
 				waitTime_ = waitForOutMs_;
 				break;
 			case STAY:
-				userState_ = UserState.OUT;
+				userState_.setState(UserState.OUT);
 				waitTime_ = waitForOutMs_;
 				break;
 			case EATING:
 				sendSignal(context, Signal.FINISH_EATING);
-				userState_ = UserState.OUT;
+				userState_.setState(UserState.OUT);
 				waitTime_ = waitForOutMs_;
 				break;
 			case FINISHED_EATING:
-				userState_ = UserState.OUT;
+				userState_.setState(UserState.OUT);
 				waitTime_ = waitForOutMs_;
 				break;
 		}
 	}
 
 	private void changeStateIfIn(Context context, String venueId) {
-		switch (userState_) {
+		switch (userState_.state) {
 			case OUT:
-				userState_ = UserState.IN;
+				userState_.setState(UserState.IN);
 				waitTime_ = waitForStayMs_;
 				currentVenueId_ = venueId;
 				break;
 			case IN:
 				if (currentVenueId_.equals(venueId)) {
-					userState_ = UserState.STAY;
+					userState_.setState(UserState.STAY);
 					waitTime_ = waitForOrderMs_;
 					sendSignal(context, Signal.BEFORE_EAT);
 				} else {
-					userState_ = UserState.IN;
+					userState_.setState(UserState.IN);
 					waitTime_ = waitForStayMs_;
 					currentVenueId_ = venueId;
 				}
 				break;
 			case STAY:
 				if (currentVenueId_.equals(venueId)) {
-					userState_ = UserState.EATING;
+					userState_.setState(UserState.EATING);
 					waitTime_ = waitForStopEatingMs_;
 					sendSignal(context, Signal.EATING);
 				} else {
-					userState_ = UserState.IN;
+					userState_.setState(UserState.IN);
 					waitTime_ = waitForStayMs_;
 					currentVenueId_ = venueId;
 				}
 				break;
 			case EATING:
 				if (currentVenueId_.equals(venueId)) {
-					userState_ = UserState.FINISHED_EATING;
+					userState_.setState(UserState.FINISHED_EATING);
 					waitTime_ = waitForOutMs_;
 					sendSignal(context, Signal.FINISH_EATING);
 				} else {
-					userState_ = UserState.IN;
+					userState_.setState(UserState.IN);
 					waitTime_ = waitForStayMs_;
 					currentVenueId_ = venueId;
 					sendSignal(context, Signal.FINISH_EATING);
@@ -239,10 +326,10 @@ public class LocationChecker {
 				break;
 			case FINISHED_EATING:
 				if (currentVenueId_.equals(venueId)) {
-					userState_ = UserState.FINISHED_EATING;
+					userState_.setState(UserState.FINISHED_EATING);
 					waitTime_ = waitForOutMs_;
 				} else {
-					userState_ = UserState.IN;
+					userState_.setState(UserState.IN);
 					waitTime_ = waitForStayMs_;
 					currentVenueId_ = venueId;
 				}
