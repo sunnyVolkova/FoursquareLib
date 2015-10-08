@@ -1,6 +1,7 @@
 package com.weezlabs.forsquarelib;
 
 import android.content.Context;
+import android.content.Intent;
 import android.location.Location;
 import android.util.Log;
 
@@ -24,8 +25,31 @@ public class LocationChecker {
 	}
 
 	public enum Signal {
-		BEFORE_EAT, EATING, FINISH_EATING
+		BEFORE_EAT(0), EATING(1), FINISH_EATING(2);
+		private int id_;
+
+		private Signal(int id) {
+			id_ = id;
+		}
+
+		public int getId() {
+			return id_;
+		}
+
+		public static Signal getTypeById(int id) {
+			for (Signal type : Signal.values()) {
+				if (type.getId() == id) {
+					return type;
+				}
+			}
+
+			return null;
+		}
 	}
+
+	//broadcast parameters
+	public static final String INTENT_FILTER_DR_SIGNAL = "INTENT_FILTER_DR_SIGNAL";
+	public static final String INTENT_EXTRA_TYPE = "TYPE";
 
 	//Forsquare categories
 	public static final String FOOD_CATEGORY_ID = "4d4b7105d754a06374d81259";
@@ -119,14 +143,14 @@ public class LocationChecker {
 					SearchVenuesResponse searchVenuesResponse = ForsquareProvider.getForsquareService().searchVenues(ll, searchRadius_, searchLimit_, getCategoriesString());
 					if (searchVenuesResponse.getVenues() != null && searchVenuesResponse.getVenues().length > 0 && searchVenuesResponse.getVenues()[0] != null) {
 						Log.d("LOG", "success: " + searchVenuesResponse.getVenues()[0].getId());
-						changeStateIfIn(searchVenuesResponse.getVenues()[0].getId());
+						changeStateIfIn(context, searchVenuesResponse.getVenues()[0].getId());
 					} else {
 						Log.d("LOG", "success: empty venues");
-						changeStateIfOut();
+						changeStateIfOut(context);
 					}
 				} catch (RetrofitError e) {
 					Log.d("LOG", "failure " + e.getMessage());
-					changeStateIfOut();
+					changeStateIfOut(context);
 				}
 				lastKnownLatitude_ = latitude;
 				lastKnownLongitude_ = longitude;
@@ -146,7 +170,7 @@ public class LocationChecker {
 		return builder.toString();
 	}
 
-	private void changeStateIfOut() {
+	private void changeStateIfOut(Context context) {
 		currentVenueId_ = "";
 		switch (userState_) {
 			case OUT:
@@ -161,7 +185,7 @@ public class LocationChecker {
 				waitTime_ = waitForOutMs_;
 				break;
 			case EATING:
-				sendSignal(Signal.FINISH_EATING);
+				sendSignal(context, Signal.FINISH_EATING);
 				userState_ = UserState.OUT;
 				waitTime_ = waitForOutMs_;
 				break;
@@ -172,7 +196,7 @@ public class LocationChecker {
 		}
 	}
 
-	private void changeStateIfIn(String venueId) {
+	private void changeStateIfIn(Context context, String venueId) {
 		switch (userState_) {
 			case OUT:
 				userState_ = UserState.IN;
@@ -183,7 +207,7 @@ public class LocationChecker {
 				if (currentVenueId_.equals(venueId)) {
 					userState_ = UserState.STAY;
 					waitTime_ = waitForOrderMs_;
-					sendSignal(Signal.BEFORE_EAT);
+					sendSignal(context, Signal.BEFORE_EAT);
 				} else {
 					userState_ = UserState.IN;
 					waitTime_ = waitForStayMs_;
@@ -194,7 +218,7 @@ public class LocationChecker {
 				if (currentVenueId_.equals(venueId)) {
 					userState_ = UserState.EATING;
 					waitTime_ = waitForStopEatingMs_;
-					sendSignal(Signal.EATING);
+					sendSignal(context, Signal.EATING);
 				} else {
 					userState_ = UserState.IN;
 					waitTime_ = waitForStayMs_;
@@ -205,12 +229,12 @@ public class LocationChecker {
 				if (currentVenueId_.equals(venueId)) {
 					userState_ = UserState.FINISHED_EATING;
 					waitTime_ = waitForOutMs_;
-					sendSignal(Signal.FINISH_EATING);
+					sendSignal(context, Signal.FINISH_EATING);
 				} else {
 					userState_ = UserState.IN;
 					waitTime_ = waitForStayMs_;
 					currentVenueId_ = venueId;
-					sendSignal(Signal.FINISH_EATING);
+					sendSignal(context, Signal.FINISH_EATING);
 				}
 				break;
 			case FINISHED_EATING:
@@ -229,9 +253,10 @@ public class LocationChecker {
 	/**
 	 * Sends signal about user state change
 	 */
-	private void sendSignal(Signal signal) {
+	private void sendSignal(Context context, Signal signal) {
 		Log.d("LOG", "sendSignal " + signal);
-		//TODO: send broadcast
-
+		Intent intent = new Intent(INTENT_FILTER_DR_SIGNAL);
+		intent.putExtra(INTENT_EXTRA_TYPE, signal.getId());
+		context.sendBroadcast(intent);
 	}
 }
