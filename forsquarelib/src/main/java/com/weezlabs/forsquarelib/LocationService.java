@@ -25,17 +25,9 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 	private final IBinder binder_ = new LocalBinder();
 
 	//variables for google API
-	/**
-	 * The desired interval for location updates. Inexact. Updates may be more or less frequent.
-	 */
-	public static final long UPDATE_INTERVAL_IN_MILLISECONDS = 10000;
-
-	/**
-	 * The fastest rate for active location updates. Exact. Updates will never be more frequent
-	 * than this value.
-	 */
-	public static final long FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS =
-			UPDATE_INTERVAL_IN_MILLISECONDS / 2;
+//	public static final long UPDATE_INTERVAL_IN_MILLISECONDS = 10000;
+//	public static final long FASTEST_UPDATE_INTERVAL_IN_MILLISECONDS =
+//			UPDATE_INTERVAL_IN_MILLISECONDS / 2;
 
 	private GoogleApiClient googleApiClient_;
 	protected LocationRequest locationRequest_;
@@ -49,14 +41,6 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 		}
 		LocationServices.FusedLocationApi.requestLocationUpdates(
 				googleApiClient_, locationRequest_, this);
-//		lastLocation_ = LocationServices.FusedLocationApi.getLastLocation(googleApiClient_);
-//		if (lastLocation_ != null) {
-//			Log.d("LOG", "getLastLocation success");
-//			//TODO: success
-//		} else {
-//			Log.d("LOG", "getLastLocation error");
-//			//TODO: error
-//		}
 	}
 
 	@Override
@@ -75,7 +59,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 		lastLocation_ = location;
 		Log.d("LOG", "onLocationChanged " + lastLocation_.getLongitude() + " " + lastLocation_.getLatitude());
 		//TODO:
-		checker_.checkLocation2(getBaseContext(), lastLocation_);
+		checker_.checkLocation(getBaseContext(), lastLocation_);
 	}
 
 	/**
@@ -102,9 +86,10 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 	}
 
 	public void startMyLocationCheck(LocationChecker checker) {
+		Log.d("LOG", "LocationService startMyLocationCheck");
 		checker_ = checker;
 		buildGoogleApiClient();
-		createLocationRequest(checker_.getWaitForOutMs());
+		createLocationRequest(checker_.getLocationUpdatePeriodMs());
 		googleApiClient_.connect();
 	}
 

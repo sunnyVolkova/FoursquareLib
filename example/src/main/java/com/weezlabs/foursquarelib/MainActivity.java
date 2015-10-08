@@ -61,9 +61,9 @@ public class MainActivity extends AppCompatActivity {
 			locationService_ = binder.getService();
 			LocationChecker customChecker = new LocationChecker();
 			customChecker.setWaitForOrderMs(15000);
-			customChecker.setWaitForOutMs(10000);
+			customChecker.setLocationUpdatePeriodMs(10000);
 			customChecker.setWaitForStayMs(15000);
-			customChecker.setWaitForStopEating(20000);
+			customChecker.setWaitForStopEatingMs(20000);
 			locationService_.startMyLocationCheck(customChecker);
 			isBound_ = true;
 		}
