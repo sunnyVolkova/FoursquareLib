@@ -22,6 +22,7 @@ import retrofit.client.Response;
  * Class for implementing customizable location check logic
  */
 public class LocationChecker {
+	public static final String LOG_TAG = "LocationChecker";
 	public enum UserState {
 		IN, STAY, EATING, FINISHED_EATING, OUT;
 	}
@@ -147,8 +148,6 @@ public class LocationChecker {
 		this.locationCheckThreshold_ = locationCheckThreshold;
 	}
 
-
-
 	/**
 	 * Main method for checking user state according to location and prev state
 	 *
@@ -158,8 +157,8 @@ public class LocationChecker {
 		if (myLocation != null) {
 			double latitude = myLocation.getLatitude();
 			double longitude = myLocation.getLongitude();
-			Log.d("LOG", "latitude = " + latitude + " longitude = " + longitude);
-			Log.d("LOG", "userStateInfo_ = " + userStateInfo_.getState() + " userStateInfo_.getEntered() = " + userStateInfo_.getEntered());
+			Log.d(LOG_TAG, "latitude = " + latitude + " longitude = " + longitude);
+			Log.d(LOG_TAG, "userStateInfo_ = " + userStateInfo_.getState() + " userStateInfo_.getEntered() = " + userStateInfo_.getEntered());
 			//TODO: probably should check distance in UserState.FINISHED_EATING state???
 			if (checkIfTimeoutExpired() &&
 					(userStateInfo_.getState() != UserState.OUT
@@ -170,18 +169,18 @@ public class LocationChecker {
 					@Override
 					public void success(SearchVenuesResponse searchVenuesResponse, Response response) {
 						if (searchVenuesResponse.getVenues() != null && searchVenuesResponse.getVenues().length > 0 && searchVenuesResponse.getVenues()[0] != null) {
-							Log.d("LOG", "success: " + searchVenuesResponse.getVenues()[0].getId());
-							Log.d("LOG", "we are in: " + searchVenuesResponse.getVenues()[0].getName());
+							Log.d(LOG_TAG, "success: " + searchVenuesResponse.getVenues()[0].getId());
+							Log.d(LOG_TAG, "we are in: " + searchVenuesResponse.getVenues()[0].getName());
 							changeStateIfIn(context, searchVenuesResponse.getVenues()[0].getId());
 						} else {
-							Log.d("LOG", "success: empty venues");
+							Log.d(LOG_TAG, "success: empty venues");
 							changeStateIfOut(context);
 						}
 					}
 
 					@Override
 					public void failure(RetrofitError error) {
-						Log.d("LOG", "failure " + error.getMessage());
+						Log.d(LOG_TAG, "failure " + error.getMessage());
 						changeStateIfOut(context);
 					}
 				});
@@ -199,13 +198,13 @@ public class LocationChecker {
 			builder.append(",");
 		}
 		builder.deleteCharAt(builder.length() - 1);
-		Log.d("LOG", "Categories: " + builder.toString());
+		Log.d(LOG_TAG, "Categories: " + builder.toString());
 		return builder.toString();
 	}
 
 	private boolean checkIfTimeoutExpired(){
 		long currentTime = System.currentTimeMillis();
-		Log.d("LOG", "userStateInfo_.getEntered() = " + userStateInfo_.getEntered() + " currentTime = " + currentTime);
+		Log.d(LOG_TAG, "userStateInfo_.getEntered() = " + userStateInfo_.getEntered() + " currentTime = " + currentTime);
 		switch (userStateInfo_.getState()) {
 			case OUT:
 				return true;
@@ -305,7 +304,7 @@ public class LocationChecker {
 	 * Sends signal about user state change
 	 */
 	private void sendSignal(Context context, Signal signal) {
-		Log.d("LOG", "sendSignal " + signal);
+		Log.d(LOG_TAG, "sendSignal " + signal);
 		Intent intent = new Intent(INTENT_FILTER_DR_SIGNAL);
 		intent.putExtra(INTENT_EXTRA_TYPE, signal.getId());
 		context.sendBroadcast(intent);

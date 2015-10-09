@@ -1,3 +1,5 @@
 <resources>
 	<string name="app_name">ForsquareLib</string>
+	<string name="notification_title">Location service</string>
+	<string name="notification_text">checking location</string>
 </resources>

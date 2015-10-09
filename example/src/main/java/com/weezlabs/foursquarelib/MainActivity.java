@@ -6,10 +6,8 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -21,29 +19,37 @@ public class MainActivity extends AppCompatActivity {
 	private LocationService locationService_;
 	private boolean isBound_;
 
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 		Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
 		setSupportActionBar(toolbar);
-
-		FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-		fab.setOnClickListener(new View.OnClickListener() {
-			@Override
-			public void onClick(View view) {
-				Intent intent = new Intent(MainActivity.this, LocationService.class);
-				bindService(intent, serviceConnection_, Context.BIND_AUTO_CREATE);
-			}
-		});
 	}
 
+
+	public void onStartClick(View clickedView){
+		Intent intent = new Intent(MainActivity.this, LocationService.class);
+		startService(intent);
+		bindService(intent, serviceConnection_, Context.BIND_AUTO_CREATE);
+	}
+
+	public void onStopClick(View clickedView){
+		if(isBound_ && locationService_ != null){
+			unbindService(serviceConnection_);
+			isBound_ = false;
+			Intent intent = new Intent(MainActivity.this, LocationService.class);
+			stopService(intent);
+		}
+	}
 
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
 		if(isBound_ && locationService_ != null){
-			locationService_.stopMyLocationCheck();
+			unbindService(serviceConnection_);
+			isBound_ = false;
 		}
 	}
 
@@ -55,7 +61,6 @@ public class MainActivity extends AppCompatActivity {
 		@Override
 		public void onServiceConnected(ComponentName className,
 									   IBinder service) {
-			Log.d("LOG", "LocationService onServiceConnected");
 			// We've bound to LocalService, cast the IBinder and get LocalService instance
 			LocationService.LocalBinder binder = (LocationService.LocalBinder) service;
 			locationService_ = binder.getService();
@@ -70,7 +75,6 @@ public class MainActivity extends AppCompatActivity {
 
 		@Override
 		public void onServiceDisconnected(ComponentName arg0) {
-			Log.d("LOG", "LocationService onServiceDisconnected");
 			isBound_ = false;
 		}
 	};
@@ -96,4 +100,5 @@ public class MainActivity extends AppCompatActivity {
 
 		return super.onOptionsItemSelected(item);
 	}
+
 }
