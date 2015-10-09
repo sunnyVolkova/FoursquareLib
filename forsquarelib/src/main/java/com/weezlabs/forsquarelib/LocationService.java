@@ -34,8 +34,11 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 	private GoogleApiClient googleApiClient_;
 	protected LocationRequest locationRequest_;
 	protected Location lastLocation_;
-	private boolean isStarted_ = false;
+	private static boolean isStarted_ = false;
 
+	public static boolean isStarted(){
+		return isStarted_;
+	}
 	@Override
 	public void onConnected(Bundle bundle) {
 		if (lastLocation_ == null) {

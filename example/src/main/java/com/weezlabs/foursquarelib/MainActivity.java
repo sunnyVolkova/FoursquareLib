@@ -26,6 +26,10 @@ public class MainActivity extends AppCompatActivity {
 		setContentView(R.layout.activity_main);
 		Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
 		setSupportActionBar(toolbar);
+		if(LocationService.isStarted()){
+			Intent intent = new Intent(MainActivity.this, LocationService.class);
+			bindService(intent, serviceConnection_, Context.BIND_AUTO_CREATE);
+		}
 	}
 
 
