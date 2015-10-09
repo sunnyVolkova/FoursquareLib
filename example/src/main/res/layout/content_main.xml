@@ -13,8 +13,22 @@
 	tools:showIn="@layout/activity_main"
 	tools:context=".MainActivity">
 
-	<TextView
-		android:text="Hello World!"
+	<Button
 		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"/>
+		android:layout_height="wrap_content"
+		android:text="@string/start"
+		android:id="@+id/buttonStart"
+		android:layout_centerHorizontal="true"
+		android:layout_marginTop="72dp"
+		android:onClick="onStartClick"/>
+
+	<Button
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:text="@string/stop"
+		android:id="@+id/buttonStop"
+		android:layout_below="@+id/buttonStart"
+		android:layout_centerHorizontal="true"
+		android:layout_marginTop="36dp"
+		android:onClick="onStopClick"/>
 </RelativeLayout>
