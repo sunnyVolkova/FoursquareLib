@@ -4,7 +4,6 @@ import android.app.Notification;
 import android.app.Service;
 import android.content.Intent;
 import android.location.Location;
-import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
@@ -26,14 +25,13 @@ import java.lang.reflect.Method;
  */
 public class LocationService extends Service implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener, LocationListener {
 	public static final String LOG_TAG = "LocationService";
+	public static final String CHECKER_EXTRA = "CHECKER_EXTRA";
 	private static final int DEFAULT_NOTIFICATION_ID = 1;
 
-	private LocationChecker checker_;
-	private final IBinder binder_ = new LocalBinder();
-
-	private GoogleApiClient googleApiClient_;
+	protected LocationChecker checker_;
 	protected LocationRequest locationRequest_;
 	protected Location lastLocation_;
+	protected GoogleApiClient googleApiClient_;
 	private static boolean isStarted_ = false;
 
 	public static boolean isStarted(){
@@ -67,58 +65,33 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 		checker_.checkLocation(getBaseContext(), lastLocation_);
 	}
 
-	/**
-	 * Class used for the client Binder. Because we know this service always runs in the same process as its clients, we don't
-	 * need to deal with IPC.
-	 */
-	public class LocalBinder extends Binder {
-		public LocationService getService() {
-			// Return this instance of LocalService so clients can call public methods
-			return LocationService.this;
-		}
-	}
-
 	@Override
 	public int onStartCommand(Intent intent, int flags, int startId) {
+		CheckParams checkParams = intent.getParcelableExtra(CHECKER_EXTRA);
+		if(checkParams != null){
+			startMyLocationCheck(checkParams);
+		} else {
+			startMyLocationCheck();
+		}
 		return(START_NOT_STICKY);
-	}
-
-
-	@Nullable
-	@Override
-	public IBinder onBind(Intent intent) {
-		Log.d(LOG_TAG, "LocationService onBind");
-		return binder_;
-	}
-
-	@Override
-	public void onRebind(Intent intent) {
-		Log.d(LOG_TAG, "LocationService onRebind");
-		super.onRebind(intent);
-	}
-
-	@Override
-	public boolean onUnbind(Intent intent) {
-		Log.d(LOG_TAG, "LocationService onUnbind");
-		return super.onUnbind(intent);
 	}
 
 	/**
 	 * Starts location check with default parameters
 	 */
 	public void startMyLocationCheck() {
-		startMyLocationCheck(new LocationChecker());
+		startMyLocationCheck(new CheckParams());
 	}
 
 	/**
 	 * Starts location check with custom checker
 	 */
-	public void startMyLocationCheck(LocationChecker checker) {
+	public void startMyLocationCheck(@Nullable CheckParams checkParams) {
 		if(!isStarted_) {
 			Log.d(LOG_TAG, "LocationService startMyLocationCheck");
-			checker_ = checker;
+			checker_ = new LocationChecker(checkParams);
 			buildGoogleApiClient();
-			createLocationRequest(checker_.getLocationUpdatePeriodMs());
+			createLocationRequest(checker_.getCheckParams().getLocationUpdatePeriodMs());
 			googleApiClient_.connect();
 			startForeground(createDefaultNotification());
 			isStarted_ = true;
@@ -138,6 +111,12 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 		Log.d(LOG_TAG, "LocationService onDestroy");
 		stopMyLocationCheck();
 		super.onDestroy();
+	}
+
+	@Nullable
+	@Override
+	public IBinder onBind(Intent intent) {
+		return null;
 	}
 
 	protected synchronized void buildGoogleApiClient() {

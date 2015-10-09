@@ -9,8 +9,6 @@ import com.weezlabs.forsquarelib.foursquare.ForsquareProvider;
 import com.weezlabs.forsquarelib.location.LocationUtils;
 import com.weezlabs.forsquarelib.models.SearchVenuesResponse;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Locale;
 
 import retrofit.Callback;
@@ -22,9 +20,8 @@ import retrofit.client.Response;
  * Class for implementing customizable location check logic
  */
 public class LocationChecker {
-	public static final String LOG_TAG = "LocationChecker";
 	public enum UserState {
-		IN, STAY, EATING, FINISHED_EATING, OUT;
+		IN, STAY, EATING, FINISHED_EATING, OUT
 	}
 
 	public class UserStateInfo {
@@ -72,6 +69,7 @@ public class LocationChecker {
 		}
 	}
 
+	public static final String LOG_TAG = "LocationChecker";
 	//broadcast parameters
 	public static final String INTENT_FILTER_DR_SIGNAL = "INTENT_FILTER_DR_SIGNAL";
 	public static final String INTENT_EXTRA_TYPE = "TYPE";
@@ -79,73 +77,30 @@ public class LocationChecker {
 	//Forsquare categories
 	public static final String FOOD_CATEGORY_ID = "4d4b7105d754a06374d81259";
 
-	//default check parameters
-	private static final int WAIT_FOR_STAY_MS = 90000;
-	private static final int WAIT_FOR_ORDER_MS = 150000;
-	private static final int WAIT_FOR_STOP_EATING = 300000;
-	private static final int LOCATION_UPDATE_PERIOD_MS = 300000;
-	private static final int DEFAULT_LOCATION_CHECK_THRESHOLD = 100;
-	private static final String SEARCH_RADIUS = "100";
-	private static final String SEARCH_LIMIT = "1";
-	private static final String[] DEFAULT_CATEGORIES = {FOOD_CATEGORY_ID};
-
 	//check parameters
-	private ArrayList<String> categoryList_ = new ArrayList<>();
-	private int waitForStayMs_ = WAIT_FOR_STAY_MS;
-	private int waitForOrderMs_ = WAIT_FOR_ORDER_MS;
-	private int waitForStopEatingMs_ = WAIT_FOR_STOP_EATING;
-	private int locationUpdatePeriodMs = LOCATION_UPDATE_PERIOD_MS;
-	private int locationCheckThreshold_ = DEFAULT_LOCATION_CHECK_THRESHOLD;
-	private String searchRadius_ = SEARCH_RADIUS;
-	private String searchLimit_ = SEARCH_LIMIT;
+	private CheckParams checkParams_;
 
 	//variables for check process
 	private UserStateInfo userStateInfo_ = new UserStateInfo(UserState.OUT, System.currentTimeMillis());
 	private double lastKnownLatitude_ = 0.0;
 	private double lastKnownLongitude_ = 0.0;
-	private int waitTime_ = locationUpdatePeriodMs;
+	private long waitTime_ = CheckParams.LOCATION_UPDATE_PERIOD_MS;
 	private String currentVenueId_ = "";
+	private boolean prevRequestFailed_ = false;
 
-	public LocationChecker() {
-		categoryList_.addAll(Arrays.asList(DEFAULT_CATEGORIES));
+	public LocationChecker(CheckParams checkParams) {
+		checkParams_ = checkParams;
+		waitTime_ = checkParams_.locationUpdatePeriodMs;
 		lastKnownLatitude_ = 0.0;
 		lastKnownLongitude_ = 0.0;
 	}
 
-	public void addCategory(String categoryId) {
-		categoryList_.add(categoryId);
+	public void setCheckParams(CheckParams checkParams){
+		checkParams_ = checkParams;
 	}
 
-	public void setWaitForStayMs(int waitForStayMs) {
-		this.waitForStayMs_ = waitForStayMs;
-	}
-
-	public void setWaitForOrderMs(int waitForOrderMs) {
-		this.waitForOrderMs_ = waitForOrderMs;
-	}
-
-	public void setWaitForStopEatingMs(int waitForStopEatingMs) {
-		this.waitForStopEatingMs_ = waitForStopEatingMs;
-	}
-
-	public void setLocationUpdatePeriodMs(int waitForOutMs) {
-		this.locationUpdatePeriodMs = waitForOutMs;
-	}
-
-	public int getLocationUpdatePeriodMs() {
-		return locationUpdatePeriodMs;
-	}
-
-	public void setSearchRadius(String searchRadius) {
-		this.searchRadius_ = searchRadius;
-	}
-
-	public void setSearchLimit(String searchLimit) {
-		this.searchLimit_ = searchLimit;
-	}
-
-	public void setLocationCheckThreshold(int locationCheckThreshold) {
-		this.locationCheckThreshold_ = locationCheckThreshold;
+	public CheckParams getCheckParams(){
+		return checkParams_;
 	}
 
 	/**
@@ -153,21 +108,21 @@ public class LocationChecker {
 	 *
 	 * @return time delay before next check in ms
 	 */
-	public int checkLocation(final Context context, Location myLocation) {
+	public long checkLocation(final Context context, Location myLocation) {
 		if (myLocation != null) {
 			double latitude = myLocation.getLatitude();
 			double longitude = myLocation.getLongitude();
-			Log.d(LOG_TAG, "latitude = " + latitude + " longitude = " + longitude);
-			Log.d(LOG_TAG, "userStateInfo_ = " + userStateInfo_.getState() + " userStateInfo_.getEntered() = " + userStateInfo_.getEntered());
+
 			//TODO: probably should check distance in UserState.FINISHED_EATING state???
 			if (checkIfTimeoutExpired() &&
 					(userStateInfo_.getState() != UserState.OUT
-					||
-					Math.abs(LocationUtils.distanceFrom(lastKnownLatitude_, lastKnownLongitude_, latitude, longitude)) > locationCheckThreshold_)) {
+					|| prevRequestFailed_
+					|| Math.abs(LocationUtils.distanceFrom(lastKnownLatitude_, lastKnownLongitude_, latitude, longitude)) > checkParams_.locationCheckThreshold_)) {
 				String ll = String.format(Locale.US, "%.06f", latitude) + "," + String.format(Locale.US, "%.06f", longitude);
-				ForsquareProvider.getForsquareService().searchVenues(ll, searchRadius_, searchLimit_, getCategoriesString(), new Callback<SearchVenuesResponse>() {
+				ForsquareProvider.getForsquareService().searchVenues(ll, checkParams_.searchRadius_, checkParams_.searchLimit_, getCategoriesString(), new Callback<SearchVenuesResponse>() {
 					@Override
 					public void success(SearchVenuesResponse searchVenuesResponse, Response response) {
+						prevRequestFailed_ = false;
 						if (searchVenuesResponse.getVenues() != null && searchVenuesResponse.getVenues().length > 0 && searchVenuesResponse.getVenues()[0] != null) {
 							Log.d(LOG_TAG, "success: " + searchVenuesResponse.getVenues()[0].getId());
 							Log.d(LOG_TAG, "we are in: " + searchVenuesResponse.getVenues()[0].getName());
@@ -182,6 +137,7 @@ public class LocationChecker {
 					public void failure(RetrofitError error) {
 						Log.d(LOG_TAG, "failure " + error.getMessage());
 						changeStateIfOut(context);
+						prevRequestFailed_ = true;
 					}
 				});
 				lastKnownLatitude_ = latitude;
@@ -193,7 +149,7 @@ public class LocationChecker {
 
 	private String getCategoriesString() {
 		StringBuilder builder = new StringBuilder();
-		for (String s : categoryList_) {
+		for (String s : checkParams_.categoryList_) {
 			builder.append(s);
 			builder.append(",");
 		}
@@ -209,11 +165,11 @@ public class LocationChecker {
 			case OUT:
 				return true;
 			case IN:
-				return (currentTime - userStateInfo_.getEntered()) > waitForStayMs_;
+				return (currentTime - userStateInfo_.getEntered()) > checkParams_.waitForStayMs_;
 			case STAY:
-				return (currentTime - userStateInfo_.getEntered()) > waitForOrderMs_;
+				return (currentTime - userStateInfo_.getEntered()) > checkParams_.waitForOrderMs_;
 			case EATING:
-				return (currentTime - userStateInfo_.getEntered()) > waitForStopEatingMs_;
+				return (currentTime - userStateInfo_.getEntered()) > checkParams_.waitForStopEatingMs_;
 			case FINISHED_EATING:
 				return true;
 		}
@@ -224,24 +180,24 @@ public class LocationChecker {
 		currentVenueId_ = "";
 		switch (userStateInfo_.getState()) {
 			case OUT:
-				waitTime_ = locationUpdatePeriodMs;
+				waitTime_ = checkParams_.locationUpdatePeriodMs;
 				break;
 			case IN:
 				userStateInfo_.setState(UserState.OUT);
-				waitTime_ = locationUpdatePeriodMs;
+				waitTime_ = checkParams_.locationUpdatePeriodMs;
 				break;
 			case STAY:
 				userStateInfo_.setState(UserState.OUT);
-				waitTime_ = locationUpdatePeriodMs;
+				waitTime_ = checkParams_.locationUpdatePeriodMs;
 				break;
 			case EATING:
 				sendSignal(context, Signal.FINISH_EATING);
 				userStateInfo_.setState(UserState.OUT);
-				waitTime_ = locationUpdatePeriodMs;
+				waitTime_ = checkParams_.locationUpdatePeriodMs;
 				break;
 			case FINISHED_EATING:
 				userStateInfo_.setState(UserState.OUT);
-				waitTime_ = locationUpdatePeriodMs;
+				waitTime_ = checkParams_.locationUpdatePeriodMs;
 				break;
 		}
 	}
@@ -250,39 +206,39 @@ public class LocationChecker {
 		switch (userStateInfo_.getState()) {
 			case OUT:
 				userStateInfo_.setState(UserState.IN);
-				waitTime_ = waitForStayMs_;
+				waitTime_ = checkParams_.waitForStayMs_;
 				currentVenueId_ = venueId;
 				break;
 			case IN:
 				if (currentVenueId_.equals(venueId)) {
 					userStateInfo_.setState(UserState.STAY);
-					waitTime_ = waitForOrderMs_;
+					waitTime_ = checkParams_.waitForOrderMs_;
 					sendSignal(context, Signal.BEFORE_EAT);
 				} else {
 					userStateInfo_.setState(UserState.IN);
-					waitTime_ = waitForStayMs_;
+					waitTime_ = checkParams_.waitForStayMs_;
 					currentVenueId_ = venueId;
 				}
 				break;
 			case STAY:
 				if (currentVenueId_.equals(venueId)) {
 					userStateInfo_.setState(UserState.EATING);
-					waitTime_ = waitForStopEatingMs_;
+					waitTime_ = checkParams_.waitForStopEatingMs_;
 					sendSignal(context, Signal.EATING);
 				} else {
 					userStateInfo_.setState(UserState.IN);
-					waitTime_ = waitForStayMs_;
+					waitTime_ = checkParams_.waitForStayMs_;
 					currentVenueId_ = venueId;
 				}
 				break;
 			case EATING:
 				if (currentVenueId_.equals(venueId)) {
 					userStateInfo_.setState(UserState.FINISHED_EATING);
-					waitTime_ = locationUpdatePeriodMs;
+					waitTime_ = checkParams_.locationUpdatePeriodMs;
 					sendSignal(context, Signal.FINISH_EATING);
 				} else {
 					userStateInfo_.setState(UserState.IN);
-					waitTime_ = waitForStayMs_;
+					waitTime_ = checkParams_.waitForStayMs_;
 					currentVenueId_ = venueId;
 					sendSignal(context, Signal.FINISH_EATING);
 				}
@@ -290,10 +246,10 @@ public class LocationChecker {
 			case FINISHED_EATING:
 				if (currentVenueId_.equals(venueId)) {
 					userStateInfo_.setState(UserState.FINISHED_EATING);
-					waitTime_ = locationUpdatePeriodMs;
+					waitTime_ = checkParams_.locationUpdatePeriodMs;
 				} else {
 					userStateInfo_.setState(UserState.IN);
-					waitTime_ = waitForStayMs_;
+					waitTime_ = checkParams_.waitForStayMs_;
 					currentVenueId_ = venueId;
 				}
 				break;
