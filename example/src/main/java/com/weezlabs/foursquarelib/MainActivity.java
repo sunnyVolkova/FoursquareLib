@@ -1,12 +1,15 @@
 package com.weezlabs.foursquarelib;
 
+import android.content.ComponentName;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Toast;
 
 import com.weezlabs.forsquarelib.CheckParams;
 import com.weezlabs.forsquarelib.LocationService;
@@ -30,12 +33,14 @@ public class MainActivity extends AppCompatActivity {
 		checkParams.setWaitForStopEatingMs(20000);
 		intent.putExtra(LocationService.CHECKER_EXTRA, checkParams);
 		startService(intent);
+		startReceiver();
 	}
 
 	public void onStopClick(View clickedView){
 		if(LocationService.isStarted()) {
 			Intent intent = new Intent(MainActivity.this, LocationService.class);
 			stopService(intent);
+			stopReceiver();
 		}
 	}
 
@@ -61,4 +66,29 @@ public class MainActivity extends AppCompatActivity {
 		return super.onOptionsItemSelected(item);
 	}
 
+	public void startReceiver(){
+		// Switch On Broadcast Receiver
+		PackageManager pm = MainActivity.this.getPackageManager();
+		ComponentName componentName = new ComponentName(
+				MainActivity.this, BroadcastManager.class);
+		pm.setComponentEnabledSetting(componentName,
+				PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+				PackageManager.DONT_KILL_APP);
+		Toast.makeText(getApplicationContext(),
+				"Broadcast Receiver Started", Toast.LENGTH_LONG)
+				.show();
+	}
+
+	public void stopReceiver(){
+		// Switch Off Broadcast Receiver
+		PackageManager pm = MainActivity.this.getPackageManager();
+		ComponentName componentName = new ComponentName(
+				MainActivity.this, BroadcastManager.class);
+		pm.setComponentEnabledSetting(componentName,
+				PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+				PackageManager.DONT_KILL_APP);
+		Toast.makeText(getApplicationContext(),
+				"Broadcast Receiver Stopped", Toast.LENGTH_LONG)
+				.show();
+	}
 }

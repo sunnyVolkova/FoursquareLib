@@ -14,7 +14,6 @@ import java.util.Locale;
 import retrofit.Callback;
 import retrofit.RetrofitError;
 import retrofit.client.Response;
-//TODO: create builder ???
 
 /**
  * Class for implementing customizable location check logic

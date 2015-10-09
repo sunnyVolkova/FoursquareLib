@@ -22,6 +22,11 @@
             </intent-filter>
         </activity>
         <service android:name="com.weezlabs.forsquarelib.LocationService" />
+        <receiver android:name=".BroadcastManager" >
+            <intent-filter>
+                <action android:name="INTENT_FILTER_DR_SIGNAL" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
