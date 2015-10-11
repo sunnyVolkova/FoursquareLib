@@ -118,7 +118,8 @@ public class LocationChecker {
 					|| prevRequestFailed_
 					|| Math.abs(LocationUtils.distanceFrom(lastKnownLatitude_, lastKnownLongitude_, latitude, longitude)) > checkParams_.locationCheckThreshold_)) {
 				String ll = String.format(Locale.US, "%.06f", latitude) + "," + String.format(Locale.US, "%.06f", longitude);
-				ForsquareProvider.getForsquareService().searchVenues(ll, checkParams_.searchRadius_, checkParams_.searchLimit_, getCategoriesString(), new Callback<SearchVenuesResponse>() {
+				ForsquareProvider.getForsquareService().searchVenues(checkParams_.getFoursquareClientId(), checkParams_.getFoursquareClientSecret(), ll,
+						checkParams_.searchRadius_, checkParams_.searchLimit_, getCategoriesString(), new Callback<SearchVenuesResponse>() {
 					@Override
 					public void success(SearchVenuesResponse searchVenuesResponse, Response response) {
 						prevRequestFailed_ = false;

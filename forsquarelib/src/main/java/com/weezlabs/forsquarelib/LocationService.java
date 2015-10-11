@@ -80,7 +80,7 @@ public class LocationService extends Service implements GoogleApiClient.Connecti
 	 * Starts location check with default parameters
 	 */
 	public void startMyLocationCheck() {
-		startMyLocationCheck(new CheckParams());
+		startMyLocationCheck(new CheckParams("",""));
 	}
 
 	/**

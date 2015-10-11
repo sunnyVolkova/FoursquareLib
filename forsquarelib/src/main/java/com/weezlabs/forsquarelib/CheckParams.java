@@ -27,9 +27,13 @@ public class CheckParams implements Parcelable {
 	int locationCheckThreshold_ = DEFAULT_LOCATION_CHECK_THRESHOLD;
 	String searchRadius_ = SEARCH_RADIUS;
 	String searchLimit_ = SEARCH_LIMIT;
+	String foursquareClientId_ = "";
+	String foursquareClientSecret_ = "";
 
-	public CheckParams() {
+	public CheckParams(String foursquareClientId, String foursquareClientSecret) {
 		categoryList_.addAll(Arrays.asList(DEFAULT_CATEGORIES));
+		foursquareClientId_ = foursquareClientId;
+		foursquareClientSecret_ = foursquareClientSecret;
 	}
 
 	public void addCategory(String categoryId) {
@@ -68,6 +72,22 @@ public class CheckParams implements Parcelable {
 		this.locationCheckThreshold_ = locationCheckThreshold;
 	}
 
+	public String getFoursquareClientId() {
+		return foursquareClientId_;
+	}
+
+	public void setFoursquareClientId(String foursquareClientId_) {
+		this.foursquareClientId_ = foursquareClientId_;
+	}
+
+	public String getFoursquareClientSecret() {
+		return foursquareClientSecret_;
+	}
+
+	public void setFoursquareClientSecret(String foursquareClientSecret_) {
+		this.foursquareClientSecret_ = foursquareClientSecret_;
+	}
+
 	@Override
 	public int describeContents() {
 		return 0;
@@ -82,6 +102,8 @@ public class CheckParams implements Parcelable {
 		dest.writeInt(locationCheckThreshold_);
 		dest.writeString(searchRadius_);
 		dest.writeString(searchLimit_);
+		dest.writeString(foursquareClientId_);
+		dest.writeString(foursquareClientSecret_);
 		dest.writeStringList(categoryList_);
 	}
 
@@ -93,6 +115,8 @@ public class CheckParams implements Parcelable {
 		locationCheckThreshold_ = source.readInt();
 		searchRadius_ = source.readString();
 		searchLimit_ = source.readString();
+		foursquareClientId_ = source.readString();
+		foursquareClientSecret_  = source.readString();
 		source.readStringList(categoryList_);
 	}
 

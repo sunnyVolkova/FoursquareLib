@@ -26,6 +26,8 @@ public interface ForsquareService {
 	 */
 	@GET(ForsquareProvider.URL_SEARCH_VENUES_UERLESS_ACCESS)
 	void searchVenues(
+			@Query("client_id") String client_id,
+			@Query("client_secret") String client_secret,
 			@Query("ll") String ll,
 			@Query("radius") String radius,
 			@Query("limit") String limit,
@@ -37,6 +39,8 @@ public interface ForsquareService {
 	 */
 	@GET(ForsquareProvider.URL_SEARCH_VENUES_UERLESS_ACCESS)
 	SearchVenuesResponse searchVenues(
+			@Query("client_id") String client_id,
+			@Query("client_secret") String client_secret,
 			@Query("ll") String ll,
 			@Query("radius") String radius,
 			@Query("limit") String limit,

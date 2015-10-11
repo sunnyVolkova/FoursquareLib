@@ -15,6 +15,10 @@ import com.weezlabs.forsquarelib.CheckParams;
 import com.weezlabs.forsquarelib.LocationService;
 
 public class MainActivity extends AppCompatActivity {
+	//credentials for forsquarelib, registered on avolkova@ruswizards.com
+	public static final String FOURSQUARE_CLIENT_ID = "YTZUJEICNYYBYWL4PRZWV13AXPVBUFLDOLTDXZP333HGVHJY";
+	public static final String FOURSQUARE_CLIENT_SECRET = "JHJY0FPUZCZQMADBNV2TQ4M0MIVDQJW0QXJVXCXVR4QP4SD5";
+
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -26,7 +30,7 @@ public class MainActivity extends AppCompatActivity {
 
 	public void onStartClick(View clickedView){
 		Intent intent = new Intent(MainActivity.this, LocationService.class);
-		CheckParams checkParams = new CheckParams();
+		CheckParams checkParams = new CheckParams(FOURSQUARE_CLIENT_ID, FOURSQUARE_CLIENT_SECRET);
 		checkParams.setWaitForOrderMs(15000);
 		checkParams.setLocationUpdatePeriodMs(10000);
 		checkParams.setWaitForStayMs(15000);
